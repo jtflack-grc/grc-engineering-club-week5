@@ -1,0 +1,61 @@
+name: sign-native-evidence
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  sign-native-evidence:
+    name: sign-native-evidence
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v4.1.2
+
+      - name: Verify evidence file exists
+        run: |
+          set -euo pipefail
+          test -s evidence/security-hub-findings.json
+          jq '.Findings | length' evidence/security-hub-findings.json
+
+      - name: Hash Security Hub findings
+        run: |
+          set -euo pipefail
+          sha256sum evidence/security-hub-findings.json > evidence/security-hub-findings.json.sha256
+          cat evidence/security-hub-findings.json.sha256
+
+      - name: Sign Security Hub findings with Cosign keyless
+        run: |
+          set -euo pipefail
+          cosign sign-blob \
+            --yes \
+            --bundle evidence/security-hub-findings.sig.bundle \
+            evidence/security-hub-findings.json
+
+      - name: Upload signed native AWS evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-native-aws-evidence
+          path: |
+            evidence/security-hub-findings.json
+            evidence/security-hub-findings.json.sha256
+            evidence/security-hub-findings.sig.bundle
+            evidence/cloudtrail-status.json
+            evidence/cloudtrail-describe.json
+            evidence/security-hub-enabled-standards.json
+            evidence/terraform-outputs.json
+            evidence/week5-evidence-summary.json
+            evidence/security-hub-status-summary.json
+            evidence/security-hub-severity-summary.json
+            evidence/security-hub-findings-top25.tsv
+          if-no-files-found: warn
