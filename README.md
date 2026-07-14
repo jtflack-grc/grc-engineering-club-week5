@@ -1,43 +1,83 @@
-# Week 5 starter: Turn On the Cameras
+# GRC Engineering Club Week 5: Native AWS Control Monitoring
 
-This is the one week that touches billable AWS services. The starter gives you a `teardown.sh` so you can shut it all down the same day. The Terraform is yours to write.
+Week 5 turns on native AWS monitoring services and captures evidence from the cloud control plane itself.
 
-## Read this first: cost
+The build provisions:
 
-- **CloudTrail** management events are free. Do not enable data events.
-- **Security Hub** bills roughly $0.001 per check. The NIST 800-53 standard is a few hundred checks, so under about $1 per month, and pennies if you tear down within the hour.
-- **AWS Config** costs more and is often blocked by an org policy. It is optional this week. Skip it unless you want it.
+- A multi-region AWS CloudTrail trail for management events
+- CloudTrail log file validation
+- A private encrypted S3 bucket for CloudTrail delivery
+- AWS Security Hub with the NIST 800-53 Rev. 5 standard enabled
+- Evidence capture scripts
+- A Week 4-style evidence verification workflow using SHA-256 and Cosign keyless signing
 
-If you apply and destroy the same day, expect well under $1. If you walk away and leave it running, it adds up slowly. **Tear it down.**
+The goal is to show how native cloud telemetry can support GRC evidence, continuous monitoring, and audit readiness without relying only on Terraform plan evidence.
 
-## What you build (your Terraform)
+## Controls demonstrated
 
-1. A multi-region **CloudTrail** with `enable_log_file_validation = true`, writing to a private, encrypted S3 bucket with a correct bucket policy (it needs the `aws:SourceArn` condition scoped to your trail). Maps to AU-2, AU-12, AU-10.
-2. **Security Hub** enabled with the NIST 800-53 Rev 5 standard subscribed. Maps to RA-5, SI-4.
+| Control area | Implementation |
+|---|---|
+| AU-2 Event Logging | CloudTrail management events enabled |
+| AU-10 Non-repudiation | CloudTrail log file validation enabled |
+| AU-12 Event Generation | Multi-region CloudTrail configured |
+| RA-5 Vulnerability Monitoring | Security Hub findings captured |
+| SI-4 System Monitoring | Security Hub NIST 800-53 Rev. 5 standard enabled |
 
-Then wait 10 to 20 minutes for findings to populate, and capture them.
+## Evidence approach
 
-## Capture evidence, then tear down
+Raw AWS evidence was captured locally during the live run, including CloudTrail status, Security Hub enabled standards, Terraform outputs, and Security Hub findings.
 
-```bash
-./teardown.sh
+Those raw files were not published because native AWS findings can include account IDs, ARNs, IAM role names, subnet IDs, security group IDs, bucket names, workload tags, and other infrastructure metadata.
+
+The public repo keeps sanitized evidence summaries instead:
+
+- `evidence/security-hub-findings-summary.json`
+- `evidence/cloudtrail-status-summary.json`
+- `evidence/verify-native-findings-chain-intact.txt`
+- `evidence/verify-native-findings-tamper-failed.txt`
+
+This preserves the control evidence story without publishing cloud reconnaissance data.
+
+## Evidence chain
+
+The Security Hub findings were signed through a GitHub Actions workflow using Cosign keyless signing.
+
+The verification script checks:
+
+1. SHA-256 integrity
+2. Cosign signature authenticity
+3. GitHub Actions OIDC identity
+4. Tamper detection
+
+Successful verification produced:
+
+```text
+Verified OK
+CHAIN INTACT
 ```
 
-`teardown.sh` captures `evidence/security-hub-findings.json` first, then runs `terraform destroy`. Sign that findings file with your week 4 pipeline so it joins your chain of custody.
+A one-byte tamper test failed as expected with a SHA-256 mismatch and non-zero exit code.
 
-## Done when
+## Cost and teardown
 
-- `aws cloudtrail get-trail-status` shows `IsLogging: true` while it is up.
-- `aws securityhub get-findings` returns at least one finding.
-- `evidence/security-hub-findings.json` is captured and non-empty.
-- `terraform destroy` completes and nothing is left billing.
+This week intentionally touched billable AWS services. The live AWS resources were destroyed after evidence capture.
 
-## On GCP?
+Post-teardown checks confirmed:
 
-The equivalent baseline is organization policy constraints plus Data Access audit logs, and Security Command Center in place of Security Hub. Same idea: native services that watch the project and report against a standard. Capture the findings, then tear it down.
+- Terraform state was empty
+- No Week 5 CloudTrail trail remained
+- Security Hub was no longer subscribed for the account
 
-## Common snags
+## What this proves
 
-- **CloudTrail bucket policy rejected.** The policy needs the `aws:SourceArn` condition naming your trail. Scope it tightly.
-- **Security Hub already enabled.** Import it into state instead of applying: `terraform import aws_securityhub_account.this <ACCOUNT_ID>`.
-- **Config access denied.** Your org blocks Config centrally. Leave it out. The Security Hub finding that says Config is not enabled is itself valid evidence of the gap.
+Week 1 showed compliant infrastructure.
+
+Week 2 added policy-as-code.
+
+Week 3 enforced controls in CI.
+
+Week 4 signed evidence for chain of custody.
+
+Week 5 adds native cloud monitoring: the cloud account itself reports control findings, and those findings are treated as governed evidence.
+
+This is the difference between “we configured it correctly once” and “we can show what the cloud control plane observed.”
