@@ -40,7 +40,7 @@ This preserves the control evidence story without publishing cloud reconnaissanc
 
 ## Evidence chain
 
-The Security Hub findings were signed through a GitHub Actions workflow using Cosign keyless signing.
+The sanitized Security Hub findings summary is signed through a GitHub Actions workflow using Cosign keyless signing. The original raw findings were signed during the live run but are not published.
 
 The verification script checks:
 
