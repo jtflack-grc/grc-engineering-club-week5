@@ -57,7 +57,7 @@ jq -n \
     },
     security_hub: {
       enabled_standards: ($enabled_standards[0] // {}),
-      finding_count: (($findings[0].Findings // []) | length)
+      captured_finding_count: (($findings[0].Findings // []) | length)
     }
   }' > evidence/week5-evidence-summary.json
 
@@ -66,5 +66,5 @@ echo "Evidence captured:"
 find evidence -maxdepth 1 -type f -print | sort
 
 echo
-echo "Security Hub finding count:"
+echo "Security Hub captured finding count (maximum 50):"
 jq '.Findings | length' evidence/security-hub-findings.json
