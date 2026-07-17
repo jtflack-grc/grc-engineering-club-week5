@@ -1,5 +1,5 @@
 {
-  "finding_count": 50,
+  "captured_finding_count": 50,
   "compliance_status_counts": [
     {
       "status": "FAILED",
