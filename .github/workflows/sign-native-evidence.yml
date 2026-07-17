@@ -24,22 +24,22 @@ jobs:
       - name: Verify evidence file exists
         run: |
           set -euo pipefail
-          test -s evidence/security-hub-findings.json
-          jq '.Findings | length' evidence/security-hub-findings.json
+          test -s evidence/security-hub-findings-summary.json
+          jq '.captured_finding_count' evidence/security-hub-findings-summary.json
 
-      - name: Hash Security Hub findings
+      - name: Hash sanitized Security Hub findings summary
         run: |
           set -euo pipefail
-          sha256sum evidence/security-hub-findings.json > evidence/security-hub-findings.json.sha256
-          cat evidence/security-hub-findings.json.sha256
+          sha256sum evidence/security-hub-findings-summary.json > evidence/security-hub-findings-summary.json.sha256
+          cat evidence/security-hub-findings-summary.json.sha256
 
-      - name: Sign Security Hub findings with Cosign keyless
+      - name: Sign sanitized Security Hub findings summary with Cosign keyless
         run: |
           set -euo pipefail
           cosign sign-blob \
             --yes \
-            --bundle evidence/security-hub-findings.sig.bundle \
-            evidence/security-hub-findings.json
+            --bundle evidence/security-hub-findings-summary.sig.bundle \
+            evidence/security-hub-findings-summary.json
 
       - name: Upload signed native AWS evidence
         if: always()
@@ -47,15 +47,8 @@ jobs:
         with:
           name: signed-native-aws-evidence
           path: |
-            evidence/security-hub-findings.json
-            evidence/security-hub-findings.json.sha256
-            evidence/security-hub-findings.sig.bundle
-            evidence/cloudtrail-status.json
-            evidence/cloudtrail-describe.json
-            evidence/security-hub-enabled-standards.json
-            evidence/terraform-outputs.json
-            evidence/week5-evidence-summary.json
-            evidence/security-hub-status-summary.json
-            evidence/security-hub-severity-summary.json
-            evidence/security-hub-findings-top25.tsv
-          if-no-files-found: warn
+            evidence/security-hub-findings-summary.json
+            evidence/security-hub-findings-summary.json.sha256
+            evidence/security-hub-findings-summary.sig.bundle
+            evidence/cloudtrail-status-summary.json
+          if-no-files-found: error
